@@ -12,7 +12,7 @@
   <input id="textTodo" type="text" />
   <ul>
     {{#each uncompletedItems}}
-      <li>{{#with date_string}}[{{this}}] {{/with}}{{content}}</li>
+      <li><input type="checkbox" data-action="completeItem"> {{#with date_string}}[{{this}}] {{/with}}{{content}}</li>
     {{/each}}
   </ul>
 </template>

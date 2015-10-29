@@ -1,27 +1,24 @@
 // https://todoist.com/API/deprecated#/API/getUncompletedItems
+Todos = new Ground.Collection('__borges_todos');
 
 if (Meteor.isClient) {
-  var refreshItems = function (template) {
-    Meteor.call('getUncompletedItems', function (error, items) {
-      if (!error) {
-        template.uncompletedItems.set(items);
-      }
-    });
-  }
-
   Template.hello.onCreated(function () {
     var self = this;
-    self.uncompletedItems = new ReactiveVar([]);
+
+    self.autorun(function () {
+      self.subscribe('todos');
+    });
+
     Meteor.call('login', function (error) {
       if (!error) {
-        refreshItems(self);
+        Meteor.call('getUncompletedItems');
       }
     });
   });
 
   Template.hello.helpers({
     uncompletedItems: function () {
-      return Template.instance().uncompletedItems.get();
+      return Todos.find({}, {sort: {item_order: 1}});
     }
   });
 
@@ -30,29 +27,52 @@ if (Meteor.isClient) {
       if (e.keyCode == 13) {
         var textTodo = $(e.currentTarget).val().trim();
         if (!!textTodo) {
-          Meteor.call('addItem', textTodo, function (error) {
-            if (!error) {
-              refreshItems(t);
-            }
-          });
+          Meteor.call('addItem', textTodo);
           $(e.currentTarget).val('');
         }
       }
+    },
+    'change [data-action="completeItem"]': function (e, t) {
+      Meteor.call('completeItem', this._id);
     }
   });
 }
 
 if (Meteor.isServer) {
-  var todo = {};
+  var API = {};
+
+  Meteor.publish('todos', function () {
+    return Todos.find({}, {fields: {id: 1, content: 1, date_string: 1, item_order: 1}, sort: {item_order: 1}});
+  });
+
   Meteor.methods({
     login: function () {
-      todo = new Todoist(Meteor.settings.todoist.email, Meteor.settings.todoist.password);
+      API = new Todoist(Meteor.settings.todoist.email, Meteor.settings.todoist.password);
     },
     getUncompletedItems: function () {
-      return todo.request('getUncompletedItems', {project_id: todo.user.inbox_project});
+      var items = API.request('getUncompletedItems', {project_id: API.user.inbox_project});
+
+      var local = Todos.find({}).map(function (t) { return t._id; });
+      var server = _.map(items, function (t) { return t.id; });
+      var diff = _.union(_.difference(local, server), _.difference(server, local));
+      if (diff.length > 0) {
+        Todos.clear();
+        Todos.remove({_id: {$in: diff}});
+      }
+
+      _.each(items, function (item) {
+        Todos.upsert({_id: item.id}, {$set: item});
+      });
     },
     addItem: function (textTodo) {
-      return todo.request('addItem', {content: textTodo});
+      var item = API.request('addItem', {content: textTodo});
+      Todos.upsert({_id: item.id}, {$set: item});
+    },
+    completeItem: function (_id) {
+      var response = API.request('completeItems', {ids: JSON.stringify([_id])});
+      if (response == 'ok') {
+        Todos.remove({_id: _id});
+      }
     }
   });
 }
