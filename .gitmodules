@@ -1,0 +1,3 @@
+[submodule "packages/meteor-todoist"]
+	path = packages/meteor-todoist
+	url = git://github.com/Igor1201/meteor-todoist.git
