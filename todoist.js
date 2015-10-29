@@ -56,7 +56,6 @@ if (Meteor.isServer) {
       var server = _.map(items, function (t) { return t.id; });
       var diff = _.union(_.difference(local, server), _.difference(server, local));
       if (diff.length > 0) {
-        Todos.clear();
         Todos.remove({_id: {$in: diff}});
       }
 
