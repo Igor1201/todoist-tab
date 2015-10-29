@@ -1,0 +1,18 @@
+<head>
+  <title>todoist</title>
+</head>
+
+<body>
+  <h1>Welcome to Meteor!</h1>
+
+  {{> hello}}
+</body>
+
+<template name="hello">
+  <input id="textTodo" type="text" />
+  <ul>
+    {{#each uncompletedItems}}
+      <li>{{#with date_string}}[{{this}}] {{/with}}{{content}}</li>
+    {{/each}}
+  </ul>
+</template>
